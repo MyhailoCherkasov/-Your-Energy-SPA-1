@@ -6,8 +6,8 @@ import SortCss from 'postcss-sort-media-queries';
 
 export default defineConfig(({ command }) => {
   return {
-    base: '/-Your-Energy-SPA-1/',
-define: {
+    base: './',
+    define: {
       [command === 'serve' ? 'global' : '_global']: {},
     },
     root: 'src',

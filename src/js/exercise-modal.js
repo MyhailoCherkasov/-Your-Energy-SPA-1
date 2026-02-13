@@ -1,86 +1,191 @@
-import { getExerciseById } from './api.js';
-import { exerciseModalMarkup } from './markup.js';
-import {
-  addFavorite,
-  removeFavorite,
-  isFavorite,
-  getFavorites,
-} from './favorites.js';
 import { openRatingModal } from './rating-modal.js';
-import { icons } from './icons.js';
+import {
+  isFavorite,
+  toggleFavorite,
+} from './favorites.js';
+import { getCurrentPage } from './header.js';
+import { loadFavoritesExercises } from './exercises.js';
 
-let backdropEl;
 
-export function initExerciseModal() {
-  backdropEl = document.querySelector('[data-modal-exercise]');
-  if (!backdropEl) return;
+let currentExerciseIdForRating = null;
 
-  document.addEventListener('click', e => {
-    const startBtn = e.target.closest('[data-start-id]');
-    if (!startBtn) return;
-    openModal(startBtn.dataset.startId);
-  });
 
-  backdropEl.addEventListener('click', e => {
-    if (e.target === backdropEl || e.target.closest('[data-modal-close]')) {
-      closeModal();
-    }
-  });
+function closeExerciseModal() {
+  const modal = document.getElementById('js-exercise-modal');
+  if (!modal) return;
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !backdropEl.hidden) {
-      closeModal();
-    }
-  });
-}
-
-export async function openModal(id) {
-  try {
-    const exercise = await getExerciseById(id);
-    const isFav = isFavorite(id);
-    backdropEl.innerHTML = exerciseModalMarkup(exercise, isFav);
-    backdropEl.hidden = false;
-    document.body.style.overflow = 'hidden';
-
-    const favBtn = backdropEl.querySelector('[data-fav-id]');
-    if (favBtn) {
-      favBtn.addEventListener('click', () => {
-        const textEl = favBtn.querySelector('span');
-        const iconEl = favBtn.querySelector('img');
-        if (isFavorite(id)) {
-          removeFavorite(id);
-          if (textEl) textEl.textContent = 'Add to favorites';
-          if (iconEl) iconEl.src = icons.heartDark;
-        } else {
-          addFavorite(exercise);
-          if (textEl) textEl.textContent = 'Remove';
-          if (iconEl) iconEl.src = icons.heartFilledDark;
-        }
-        const favList = document.querySelector('.favorites-list');
-        if (favList && document.querySelector('.favorites')) {
-          const { initFavoritesPage } = getFavoritesModule();
-          if (initFavoritesPage) initFavoritesPage();
-        }
-      });
-    }
-
-    const ratingBtn = backdropEl.querySelector('[data-rating-id]');
-    if (ratingBtn) {
-      ratingBtn.addEventListener('click', () => {
-        closeModal();
-        openRatingModal(ratingBtn.dataset.ratingId);
-      });
-    }
-  } catch {}
-}
-
-function closeModal() {
-  if (!backdropEl) return;
-  backdropEl.hidden = true;
-  backdropEl.innerHTML = '';
+  modal.classList.remove('exercise-modal--open');
   document.body.style.overflow = '';
 }
 
-function getFavoritesModule() {
-  return { initFavoritesPage: window.__reinitFavorites };
+
+export function openExerciseModal(exerciseId) {
+  const modal = document.getElementById('js-exercise-modal');
+  if (!modal) return;
+
+  
+  currentExerciseIdForRating = exerciseId;
+
+  
+  modal.classList.add('exercise-modal--open');
+  document.body.style.overflow = 'hidden';
+
+  
+  const image = document.getElementById('js-exercise-modal-image');
+  const title = document.getElementById('js-exercise-modal-title');
+  const ratingValue = document.querySelector('.exercise-modal__rating-value');
+  const ratingStars = document.querySelector('.exercise-modal__rating-stars');
+  const target = document.getElementById('js-exercise-modal-target');
+  const bodyPart = document.getElementById('js-exercise-modal-body-part');
+  const equipment = document.getElementById('js-exercise-modal-equipment');
+  const popular = document.getElementById('js-exercise-modal-popular');
+  const calories = document.getElementById('js-exercise-modal-calories');
+  const time = document.getElementById('js-exercise-modal-time');
+  const description = document.getElementById('js-exercise-modal-description');
+
+  
+  if (title) title.textContent = 'Loading...';
+  if (ratingValue) ratingValue.textContent = '0.0';
+  if (target) target.textContent = '';
+  if (bodyPart) bodyPart.textContent = '';
+  if (equipment) equipment.textContent = '';
+  if (popular) popular.textContent = '0';
+  if (calories) calories.textContent = '0';
+  if (time) time.textContent = '/0 min';
+  if (description) description.textContent = '';
+  if (image) image.src = '';
+
+  
+  fetch(`https://your-energy.b.goit.study/api/exercises/${exerciseId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch exercise details');
+      }
+      return response.json();
+    })
+    .then(exercise => {
+      
+      if (image) image.src = exercise.gifUrl || '';
+      if (title) title.textContent = exercise.name || '';
+      if (target) target.textContent = exercise.target || '';
+      if (bodyPart) bodyPart.textContent = exercise.bodyPart || '';
+      if (equipment) equipment.textContent = exercise.equipment || '';
+      if (popular) popular.textContent = exercise.popularity || 0;
+      if (calories) calories.textContent = exercise.burnedCalories || 0;
+      if (time) time.textContent = `/${exercise.time || 0} min`;
+      if (description) description.textContent = exercise.description || '';
+
+      
+      if (ratingValue) {
+        ratingValue.textContent = (exercise.rating || 0).toFixed(1);
+      }
+
+      if (ratingStars) {
+        const stars = ratingStars.querySelectorAll(
+          '.exercise-modal__rating-star'
+        );
+        const rating = Math.round(exercise.rating || 0);
+
+        stars.forEach((star, index) => {
+          const path = star.querySelector('path');
+          if (index < rating) {
+            path.setAttribute('fill', '#EEA10C');
+            path.removeAttribute('stroke');
+            path.removeAttribute('stroke-width');
+          } else {
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+            path.setAttribute('stroke-width', '1.5');
+          }
+        });
+      }
+
+      
+      updateFavoriteButton(exerciseId);
+
+      
+      const ratingBtn = document.getElementById('js-exercise-modal-rating-btn');
+      if (ratingBtn) {
+        
+        const newRatingBtn = ratingBtn.cloneNode(true);
+        ratingBtn.parentNode.replaceChild(newRatingBtn, ratingBtn);
+
+        newRatingBtn.addEventListener('click', () => {
+          closeExerciseModal();
+          openRatingModal(exerciseId);
+        });
+      }
+    })
+    .catch(error => {
+      if (title) title.textContent = 'Error loading exercise';
+      if (description)
+        description.textContent =
+          'Failed to load exercise details. Please try again later.';
+    });
 }
+
+
+function updateFavoriteButton(exerciseId) {
+  const favoriteBtn = document.getElementById('js-exercise-modal-favorites');
+  if (!favoriteBtn) return;
+
+  const isInFavorites = isFavorite(exerciseId);
+  const btnText = favoriteBtn.querySelector('span');
+  const btnIcon = favoriteBtn.querySelector('svg path');
+
+  if (isInFavorites) {
+    favoriteBtn.classList.add('active');
+    if (btnText) btnText.textContent = 'Remove from favorites';
+    if (btnIcon) {
+      btnIcon.setAttribute('fill', 'currentColor');
+      btnIcon.removeAttribute('stroke');
+      btnIcon.removeAttribute('stroke-width');
+    }
+  } else {
+    favoriteBtn.classList.remove('active');
+    if (btnText) btnText.textContent = 'Add to favorites';
+    if (btnIcon) {
+      btnIcon.setAttribute('fill', 'none');
+      btnIcon.setAttribute('stroke', 'currentColor');
+      btnIcon.setAttribute('stroke-width', '2');
+    }
+  }
+}
+
+
+export { closeExerciseModal };
+
+
+export function initExerciseModal() {
+  
+  const modalCloseBtn = document.getElementById('js-exercise-modal-close');
+  const modal = document.getElementById('js-exercise-modal');
+  const modalOverlay = modal?.querySelector('.exercise-modal__overlay');
+
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', closeExerciseModal);
+  }
+
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', closeExerciseModal);
+  }
+
+  
+  const favoriteBtn = document.getElementById('js-exercise-modal-favorites');
+  if (favoriteBtn) {
+    favoriteBtn.addEventListener('click', () => {
+      const exerciseId = currentExerciseIdForRating;
+      if (!exerciseId) return;
+
+      const wasAdded = toggleFavorite(exerciseId);
+      updateFavoriteButton(exerciseId);
+
+      
+      if (!wasAdded && getCurrentPage() === 'favorites') {
+        closeExerciseModal();
+        loadFavoritesExercises();
+      }
+    });
+  }
+}
+

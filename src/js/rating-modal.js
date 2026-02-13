@@ -1,101 +1,342 @@
-import { patchExerciseRating } from './api.js';
-import { ratingModalMarkup } from './markup.js';
-import { icons } from './icons.js';
+import { showGlobalNotification } from './global-notification.js';
+import {
+  showFieldError,
+  hideFieldError,
+  validateEmail,
+} from './form-validation.js';
 
-let backdropEl;
 
-export function initRatingModal() {
-  backdropEl = document.querySelector('[data-modal-rating]');
-  if (!backdropEl) return;
+let currentExerciseIdForRating = null;
 
-  backdropEl.addEventListener('click', e => {
-    if (e.target === backdropEl || e.target.closest('[data-modal-close]')) {
-      closeRatingModal();
-    }
-  });
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && backdropEl && !backdropEl.hidden) {
-      closeRatingModal();
-    }
-  });
+function showServerMessage(message, type = 'error') {
+  const messageElement = document.getElementById('js-rating-server-message');
+  const messageTextElement = document.getElementById(
+    'js-rating-server-message-text'
+  );
+  if (!messageElement || !messageTextElement) return;
+
+  messageTextElement.textContent = message;
+  messageElement.classList.remove(
+    'rating-modal__server-message--error',
+    'rating-modal__server-message--success'
+  );
+  messageElement.classList.add(`rating-modal__server-message--${type}`);
+  messageElement.classList.add('rating-modal__server-message--visible');
 }
 
+function hideServerMessage() {
+  const messageElement = document.getElementById('js-rating-server-message');
+  const messageTextElement = document.getElementById(
+    'js-rating-server-message-text'
+  );
+  if (!messageElement) return;
+
+  messageElement.classList.remove('rating-modal__server-message--visible');
+  if (messageTextElement) {
+    messageTextElement.textContent = '';
+  }
+  messageElement.classList.remove(
+    'rating-modal__server-message--error',
+    'rating-modal__server-message--success'
+  );
+}
+
+
+function closeRatingModal() {
+  const modal = document.getElementById('js-rating-modal');
+  if (!modal) return;
+
+  modal.classList.remove('rating-modal--open');
+  document.body.style.overflow = '';
+  currentExerciseIdForRating = null;
+
+  
+  const emailInput = document.getElementById('js-rating-modal-email');
+  const emailError = document.getElementById('js-email-error');
+  const commentTextarea = document.getElementById('js-rating-modal-comment');
+  const commentError = document.getElementById('js-comment-error');
+  const ratingError = document.getElementById('js-rating-error');
+
+  hideFieldError(emailInput, emailError);
+  hideFieldError(commentTextarea, commentError);
+  hideFieldError(null, ratingError);
+  hideServerMessage();
+}
+
+
 export function openRatingModal(exerciseId) {
-  if (!backdropEl) return;
-  backdropEl.innerHTML = ratingModalMarkup(exerciseId);
-  backdropEl.hidden = false;
-  document.body.style.overflow = 'hidden';
+  const modal = document.getElementById('js-rating-modal');
+  if (!modal) return;
 
-  let selectedRating = 0;
-  const stars = backdropEl.querySelectorAll('[data-star]');
-  const valueEl = backdropEl.querySelector('.modal-rating-value');
-  const form = backdropEl.querySelector('.modal-rating-form');
+  currentExerciseIdForRating = exerciseId;
 
+  
+  const form = document.getElementById('js-rating-modal-form');
+  const emailInput = document.getElementById('js-rating-modal-email');
+  const commentTextarea = document.getElementById('js-rating-modal-comment');
+  const ratingValue = document.getElementById('js-rating-modal-value');
+  const stars = document.querySelectorAll('.rating-modal__star');
+
+  if (form) form.reset();
+  if (ratingValue) ratingValue.textContent = '0.0';
+
+  
+  const emailError = document.getElementById('js-email-error');
+  const commentError = document.getElementById('js-comment-error');
+  const ratingError = document.getElementById('js-rating-error');
+  hideFieldError(emailInput, emailError);
+  hideFieldError(commentTextarea, commentError);
+  hideFieldError(null, ratingError);
+  hideServerMessage();
+
+  
   stars.forEach(star => {
-    star.style.cursor = 'pointer';
+    star.classList.remove('rating-modal__star--active');
+    const svg = star.querySelector('svg');
+    if (svg) {
+      const path = svg.querySelector('path');
+      if (path) {
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', 'currentColor');
+      }
+    }
+  });
+
+  
+  modal.classList.add('rating-modal--open');
+  document.body.style.overflow = 'hidden';
+}
+
+
+export { closeRatingModal };
+
+
+export function initRatingModal() {
+  
+  const ratingModalCloseBtn = document.getElementById('js-rating-modal-close');
+  const ratingModal = document.getElementById('js-rating-modal');
+  const ratingModalOverlay = ratingModal?.querySelector(
+    '.rating-modal__overlay'
+  );
+
+  if (ratingModalCloseBtn) {
+    ratingModalCloseBtn.addEventListener('click', closeRatingModal);
+  }
+
+  if (ratingModalOverlay) {
+    ratingModalOverlay.addEventListener('click', closeRatingModal);
+  }
+
+  
+  const serverMessageCloseBtn = document.getElementById(
+    'js-rating-server-message-close'
+  );
+  if (serverMessageCloseBtn) {
+    serverMessageCloseBtn.addEventListener('click', hideServerMessage);
+  }
+
+  
+  const ratingStars = document.querySelectorAll('.rating-modal__star');
+  const ratingValue = document.getElementById('js-rating-modal-value');
+  let selectedRating = 0;
+
+  ratingStars.forEach((star, index) => {
     star.addEventListener('click', () => {
-      selectedRating = parseInt(star.dataset.star, 10);
-      updateStars(stars, selectedRating);
-      if (valueEl) valueEl.textContent = selectedRating.toFixed(1);
+      selectedRating = index + 1;
+
+      if (ratingValue) {
+        ratingValue.textContent = selectedRating.toFixed(1);
+      }
+
+      
+      ratingStars.forEach((s, i) => {
+        if (i < selectedRating) {
+          s.classList.add('rating-modal__star--active');
+          const svg = s.querySelector('svg');
+          if (svg) {
+            const path = svg.querySelector('path');
+            if (path) {
+              path.setAttribute('fill', '#EEA10C');
+              path.setAttribute('stroke', '#EEA10C');
+            }
+          }
+        } else {
+          s.classList.remove('rating-modal__star--active');
+          const svg = s.querySelector('svg');
+          if (svg) {
+            const path = svg.querySelector('path');
+            if (path) {
+              path.setAttribute('fill', 'none');
+              path.setAttribute('stroke', 'currentColor');
+            }
+          }
+        }
+      });
+    });
+
+    
+    star.addEventListener('mouseenter', () => {
+      const hoverRating = index + 1;
+      ratingStars.forEach((s, i) => {
+        if (
+          i < hoverRating &&
+          !s.classList.contains('rating-modal__star--active')
+        ) {
+          s.style.color = 'rgba(255, 255, 255, 0.6)';
+        }
+      });
+    });
+
+    star.addEventListener('mouseleave', () => {
+      ratingStars.forEach((s, i) => {
+        if (!s.classList.contains('rating-modal__star--active')) {
+          s.style.color = 'rgba(255, 255, 255, 0.3)';
+        }
+      });
     });
   });
 
-  if (form) {
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      const msgEl = form.querySelector('.modal-rating-message');
-      const email = form.email.value.trim();
-      const review = form.review.value.trim();
+  
+  const emailInput = document.getElementById('js-rating-modal-email');
+  const emailError = document.getElementById('js-email-error');
+  const commentTextarea = document.getElementById('js-rating-modal-comment');
+  const commentError = document.getElementById('js-comment-error');
 
-      if (!selectedRating || !email || !review) {
-        if (msgEl) {
-          msgEl.textContent =
-            'Please fill in all fields: rating, email, and comment.';
-          msgEl.hidden = false;
+  if (emailInput && emailError) {
+    emailInput.addEventListener('input', () => {
+      hideFieldError(emailInput, emailError);
+    });
+  }
+
+  if (commentTextarea && commentError) {
+    commentTextarea.addEventListener('input', () => {
+      hideFieldError(commentTextarea, commentError);
+    });
+  }
+
+  
+  ratingStars.forEach(star => {
+    star.addEventListener('click', () => {
+      const ratingError = document.getElementById('js-rating-error');
+      if (ratingError) {
+        hideFieldError(null, ratingError);
+      }
+    });
+  });
+
+  
+  const ratingForm = document.getElementById('js-rating-modal-form');
+  if (ratingForm) {
+    ratingForm.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const ratingStars = document.querySelectorAll('.rating-modal__star');
+      const ratingValue = document.getElementById('js-rating-modal-value');
+      const emailInput = document.getElementById('js-rating-modal-email');
+      const commentTextarea = document.getElementById(
+        'js-rating-modal-comment'
+      );
+      const emailError = document.getElementById('js-email-error');
+      const commentError = document.getElementById('js-comment-error');
+      const ratingError = document.getElementById('js-rating-error');
+
+      let selectedRating = 0;
+      let hasErrors = false;
+
+      
+      ratingStars.forEach((star, index) => {
+        if (star.classList.contains('rating-modal__star--active')) {
+          selectedRating = Math.max(selectedRating, index + 1);
         }
+      });
+
+      
+      if (selectedRating === 0) {
+        showFieldError(null, ratingError, 'Please select a rating');
+        hasErrors = true;
+      } else {
+        hideFieldError(null, ratingError);
+      }
+
+      const email = emailInput?.value.trim() || '';
+      const review = commentTextarea?.value.trim() || '';
+
+      
+      if (!email) {
+        showFieldError(emailInput, emailError, 'Please enter your email');
+        hasErrors = true;
+      } else if (!validateEmail(email)) {
+        showFieldError(
+          emailInput,
+          emailError,
+          'Please enter a valid email address'
+        );
+        hasErrors = true;
+      } else {
+        hideFieldError(emailInput, emailError);
+      }
+
+      
+      if (!review) {
+        showFieldError(
+          commentTextarea,
+          commentError,
+          'Please enter your comment'
+        );
+        hasErrors = true;
+      } else {
+        hideFieldError(commentTextarea, commentError);
+      }
+
+      
+      if (hasErrors) {
         return;
       }
 
-      try {
-        await patchExerciseRating(exerciseId, {
-          rate: selectedRating,
-          email,
-          review,
-        });
-        if (msgEl) {
-          msgEl.textContent = 'Thank you for your rating!';
-          msgEl.className =
-            'modal-rating-message modal-rating-message--success';
-          msgEl.hidden = false;
-        }
-        setTimeout(async () => {
-          closeRatingModal();
-          const { openModal } = await import('./exercise-modal.js');
-          openModal(exerciseId);
-        }, 1500);
-      } catch (err) {
-        if (msgEl) {
-          msgEl.textContent =
-            err.message || 'Failed to send rating. Please try again.';
-          msgEl.className = 'modal-rating-message modal-rating-message--error';
-          msgEl.hidden = false;
-        }
+      
+      if (currentExerciseIdForRating) {
+        
+        hideServerMessage();
+
+        fetch(
+          `https://your-energy.b.goit.study/api/exercises/${currentExerciseIdForRating}/rating`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              rate: selectedRating,
+              email,
+              review,
+            }),
+          }
+        )
+          .then(async response => {
+            const data = await response.json();
+
+            if (!response.ok) {
+              
+              throw { message: data.message, data };
+            }
+
+            return data;
+          })
+          .then(data => {
+            closeRatingModal();
+            const exerciseName = data.name || 'the exercise';
+            showGlobalNotification(
+              `Thank you, your review for exercise ${exerciseName} has been submitted`,
+              'success'
+            );
+          })
+          .catch(error => {
+            const errorMessage =
+              error.message || 'Failed to submit rating. Please try again.';
+            showServerMessage(errorMessage, 'error');
+          });
       }
     });
   }
-}
-
-function closeRatingModal() {
-  if (!backdropEl) return;
-  backdropEl.hidden = true;
-  backdropEl.innerHTML = '';
-  document.body.style.overflow = '';
-}
-
-function updateStars(stars, rating) {
-  stars.forEach(star => {
-    const val = parseInt(star.dataset.star, 10);
-    star.src = val <= rating ? icons.starOrange : icons.starGrey;
-  });
 }

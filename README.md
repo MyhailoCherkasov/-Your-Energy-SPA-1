@@ -1,34 +1,33 @@
 # Your Energy
 
-A fitness-oriented web application that lets users browse a rich catalogue of
-exercises, filter them by muscle group, body part, or equipment, save favourites
-for later, and leave star ratings. The app is fully responsive across mobile,
-tablet, and desktop breakpoints and is built with vanilla JavaScript, CSS custom
-properties, and Vite.
+A fitness-focused web application for browsing exercises, filtering them by muscle group, body part, or equipment, and exploring detailed workout information in a clean, responsive UI. Users can search exercises by keyword, open a modal with full exercise details, add items to favorites, and leave star ratings.
+
+
 
 ## Getting Started
 
-1. Clone the repository and install dependencies:
+### 1) Install dependencies
 
-```bash
 npm install
-```
 
-2. Run the project locally:
+### 2) Run locally
 
-```bash
-npm run dev      # Start dev server at localhost:5173
-npm run build    # Production build to dist/
-npm run preview  # Preview production build
-```
+npm run dev
 
-## API Documentation
+### 3) Build for production
 
-The back-end API that powers exercise data, quotes, and ratings is documented
-via Swagger:
+npm run build
 
-[https://your-energy.b.goit.study/api-docs](https://your-energy.b.goit.study/api-docs)
+### 4) Preview production build
 
-## Live Demo
+npm run preview
 
-[https://vorobiov-vladyslav.github.io/your-energy/](https://vorobiov-vladyslav.github.io/your-energy/)
+
+
+API Documentation
+
+https://your-energy.b.goit.study/api-docs
+
+Live Demo
+
+https://myhailocherkasov.github.io/-Your-Energy-SPA-1/

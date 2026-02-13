@@ -1,0 +1,44 @@
+.global-notification {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: all 0.3s ease;
+}
+
+.global-notification--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.global-notification__content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(82,196,26,.95);  /* ЗЕЛЁНЫЙ (success) */
+  color: #fff;                     /* БЕЛЫЙ ТЕКСТ */
+  padding: 16px 40px;
+  font-size: 14px;
+}
+
+.global-notification--error .global-notification__content {
+  background: rgba(255,77,79,.95);  /* КРАСНЫЙ */
+  color: #fff;
+}
+
+.global-notification--warning .global-notification__content {
+  background: rgba(238,246,6,.95);  /* ЖЁЛТЫЙ */
+  color: #000;                     /* ЧЁРНЫЙ ТЕКСТ */
+}
+
+.global-notification__close {
+  background: none;
+  border: none;
+  color: inherit;  /* чтобы крестик тоже менял цвет */
+  font-size: 16px;
+  cursor: pointer;
+}

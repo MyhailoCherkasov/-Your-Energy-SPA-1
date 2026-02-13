@@ -1,46 +1,67 @@
-const menuOpenBtn = document.querySelector('[data-menu-open]');
-const menuCloseBtn = document.querySelector('[data-menu-close]');
-const mobileMenu = document.querySelector('[data-menu]');
+import './css/styles.css';
 
-if (menuOpenBtn && menuCloseBtn && mobileMenu) {
-  menuOpenBtn.addEventListener('click', () => {
-    mobileMenu.classList.add('is-open');
-    document.body.style.overflow = 'hidden';
-  });
+import {
+  loadExerciseCards,
+  updateBreadcrumbs,
+  initSearch,
+  initCardsEventListener,
+  initHashtags,
+  switchToFavorites,
+} from './js/exercises.js';
+import { initExerciseModal, closeExerciseModal } from './js/exercise-modal.js';
+import { initRatingModal, closeRatingModal } from './js/rating-modal.js';
+import { initGlobalNotification } from './js/global-notification.js';
+import { initFooterSubscription } from './js/email-validation.js';
+import { initHeader } from './js/header.js';
+import { displayQuote } from './js/quote.js';
 
-  menuCloseBtn.addEventListener('click', () => {
-    mobileMenu.classList.remove('is-open');
-    document.body.style.overflow = '';
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  const isFavoritesPage = window.location.pathname.includes('favorites.html');
+
+  initExerciseModal();
+  initRatingModal();
+  initGlobalNotification();
+  initHeader();
+  initCardsEventListener();
+  initFooterSubscription();
+
+  // Quote block is inside exercises partial, so it exists on both pages
+  displayQuote();
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && mobileMenu.classList.contains('is-open')) {
-      mobileMenu.classList.remove('is-open');
-      document.body.style.overflow = '';
+    if (e.key === 'Escape') {
+      closeExerciseModal();
+      closeRatingModal();
     }
   });
-}
 
-const yearEl = document.querySelector('[data-year]');
-if (yearEl) yearEl.textContent = new Date().getFullYear();
+  // FAVORITES PAGE: no hero, no filters/search logic, only favorites rendering
+  if (isFavoritesPage) {
+    switchToFavorites();
+    return;
+  }
 
-import { initQuote } from './js/quote.js';
-import { initFilters } from './js/filters.js';
-import { initFavoritesPage } from './js/favorites.js';
-import { initSubscription } from './js/subscription.js';
-import { initExerciseModal } from './js/exercise-modal.js';
-import { initRatingModal } from './js/rating-modal.js';
+  // HOME PAGE
+  initSearch();
+  initHashtags();
+  loadExerciseCards('Muscles', 1);
 
-initQuote();
-initSubscription();
-initExerciseModal();
-initRatingModal();
+  const filterButtons = document.querySelectorAll(
+    '.exercises__content__header-filters-item'
+  );
 
-if (document.querySelector('.exercises')) {
-  initFilters();
-}
+  filterButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      filterButtons.forEach(btn =>
+        btn.classList.remove('exercises__content__header-filters-item--active')
+      );
 
-if (document.querySelector('.favorites')) {
-  initFavoritesPage();
-  window.__reinitFavorites = initFavoritesPage;
-}
+      button.classList.add('exercises__content__header-filters-item--active');
+
+      const filter = button.getAttribute('data-filter');
+      updateBreadcrumbs(null);
+
+      loadExerciseCards(filter, 1);
+    });
+  });
+});

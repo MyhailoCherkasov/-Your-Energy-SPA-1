@@ -1,51 +1,69 @@
-import { getQuote } from './api.js';
 
-const QUOTE_STORAGE_KEY = 'dailyQuote';
-
-function getTodayDateString() {
-  return new Date().toDateString();
+function getTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-function getCachedQuote() {
+
+async function loadQuoteOfTheDay() {
+  const cachedQuoteText = localStorage.getItem('quote-text');
+  const cachedQuoteAuthor = localStorage.getItem('quote-author');
+  const cachedQuoteDate = localStorage.getItem('quote-date');
+  const todayDate = getTodayDate();
+
+  
+  if (cachedQuoteText && cachedQuoteAuthor && cachedQuoteDate) {
+    
+    if (cachedQuoteDate === todayDate) {
+      
+      return { quote: cachedQuoteText, author: cachedQuoteAuthor };
+    }
+  }
+
+  
   try {
-    const cached = localStorage.getItem(QUOTE_STORAGE_KEY);
-    if (!cached) return null;
+    const response = await fetch('https://your-energy.b.goit.study/api/quote');
+    const data = await response.json();
 
-    const { quote, author, date } = JSON.parse(cached);
-    if (date !== getTodayDateString()) return null;
+    
+    localStorage.setItem('quote-text', data.quote);
+    localStorage.setItem('quote-author', data.author);
+    localStorage.setItem('quote-date', todayDate);
 
-    return { quote, author };
-  } catch {
+    
+    return { quote: data.quote, author: data.author };
+  } catch (error) {
+    
+    if (cachedQuoteText && cachedQuoteAuthor) {
+      return { quote: cachedQuoteText, author: cachedQuoteAuthor };
+    }
+
+    
     return null;
   }
 }
 
-function cacheQuote(quote, author) {
-  try {
-    localStorage.setItem(
-      QUOTE_STORAGE_KEY,
-      JSON.stringify({ quote, author, date: getTodayDateString() })
-    );
-  } catch {}
-}
 
-export function initQuote() {
-  const quoteEl = document.querySelector('.quote-card-quote');
-  const authorEl = document.querySelector('.quote-card-author');
-  if (!quoteEl || !authorEl) return;
+export async function displayQuote() {
+  const quoteData = await loadQuoteOfTheDay();
 
-  const cached = getCachedQuote();
-  if (cached) {
-    quoteEl.textContent = cached.quote;
-    authorEl.textContent = cached.author;
+  if (!quoteData) {
     return;
   }
 
-  getQuote()
-    .then(data => {
-      quoteEl.textContent = data.quote;
-      authorEl.textContent = data.author;
-      cacheQuote(data.quote, data.author);
-    })
-    .catch(() => {});
+  const quoteTextElement = document.getElementById('js-exercises-quote-text');
+  const quoteAuthorElement = document.getElementById(
+    'js-exercises-quote-author'
+  );
+
+  if (quoteTextElement) {
+    quoteTextElement.textContent = quoteData.quote;
+  }
+
+  if (quoteAuthorElement) {
+    quoteAuthorElement.textContent = quoteData.author;
+  }
 }
